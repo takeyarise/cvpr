@@ -42,7 +42,6 @@ def create_query_vec(query_tags, tag_vector):
 
 
 def search_rows(tag_query_vector, text_query_vector, k, alpha):
-    
     meta_df = pd.read_csv("data/vector/store/metas.csv")
     title_vec = np.load("data/vector/store/title_vector.npy")
     abst_vec = np.load("data/vector/store/abst_vector.npy")
@@ -51,23 +50,19 @@ def search_rows(tag_query_vector, text_query_vector, k, alpha):
         title_score = title_vec @ query_vector
         abst_score = abst_vec @ query_vector
         return alpha * title_score + (1 - alpha) * abst_score
-    
+
     if tag_query_vector is not None and text_query_vector is not None:
         query_vector = (tag_query_vector + text_query_vector) / 2.0
         score = calc_score(query_vector)
-    
     elif tag_query_vector is not None:
         score = calc_score(tag_query_vector)
-    
     elif text_query_vector is not None:
         score = calc_score(text_query_vector)
-    
     else:
         raise ValueError("both query vector is None")
 
     top_k_indices = np.argsort(-score)[:k]
     return meta_df.iloc[top_k_indices]
-
 
 
 def chat_completion_request(messages, functions=None, result=[], model="gpt-3.5-turbo-0613"):
@@ -97,7 +92,6 @@ def create_summary(placeholder, title, abst):
     (1)既存研究では何ができなかったのか。
     (2)どのようなアプローチでそれを解決しようとしたか
     (3)結果、何が達成できたのか
-    
 
     タイトル: {title}
     アブストラクト: {abst}
@@ -147,7 +141,7 @@ def create_summary(placeholder, title, abst):
     if len(result) == 0:
         placeholder.markdown("ChatGPTの結果取得に失敗しました...😢", unsafe_allow_html=True)
         return
-    
+
     res = result[0]
     func_result = res.json()["choices"][0]["message"]["function_call"]["arguments"]
     output = json.loads(func_result)
@@ -191,18 +185,18 @@ def main():
     #if st.sidebar.button('APIキーの登録'):
     #    openai.api_key = token
     #    st.session_state.token = token
-    
+
     #if len(st.session_state.token) > 0:
     #    st.sidebar.write(f'トークンが設定されました')
 
     if "search_clicked" not in st.session_state:
         st.session_state.search_clicked = False
-    
+
     def clear_session():
         st.session_state.search_clicked = False
         if "summary_clicked" in st.session_state:
             st.session_state.pop("summary_clicked")
-        
+
         if "summary" in st.session_state:
             st.session_state.pop("summary")
 
@@ -214,7 +208,7 @@ def main():
         "検索キーワード(日本語 or 英語) " + exp_text, value="",
         on_change=clear_session,
         disabled=not api_available)
-    
+
     query_tags = st.multiselect("[オプション] タグの選択(複数選択可)", options=tag_vector.keys(), on_change=clear_session)
 
 
@@ -223,7 +217,7 @@ def main():
     ratio = target_options.index(target) / 2.0
 
     num_results = st.selectbox('表示件数:', (20, 50, 100, 200), index=0, on_change=clear_session)
-    
+
     if st.button('検索'):
         st.session_state.search_clicked = True
 
@@ -243,18 +237,18 @@ def main():
             tag_query_vector = create_query_vec(query_tags, tag_vector)
         else:
             tag_query_vector = None
-        
+
         if len(query_text) > 0:
             text_query_vector = np.array(vectorize(query_text))
         else:
             text_query_vector = None
-        
+
         results = search_rows(tag_query_vector, text_query_vector, k=num_results, alpha=ratio)
         results.fillna("", inplace=True)
 
         if "summary_clicked" not in st.session_state:
             st.session_state.summary_clicked = [False] * len(results)
-        
+
         if "summary" not in st.session_state:
             st.session_state.summary = [""] * len(results)
 
